@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>每日市场复盘 {{ date }}</title>
+<style>
+  :root {
+    --bg: #101319; --card: #191d26; --card2: #202531; --border: #2a3040;
+    --text: #e8eaf0; --sub: #9aa3b5; --red: #e64545; --green: #1a9e5a;
+    --gold: #d9a514; --blue: #5a8cff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: "Microsoft YaHei", "PingFang SC", -apple-system, sans-serif; line-height: 1.6; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 24px 20px 60px; }
+
+  /* Header */
+  header { display: flex; align-items: center; gap: 28px; padding: 22px 26px; background: linear-gradient(135deg, #1b2130 0%, #141a26 100%); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 22px; flex-wrap: wrap; }
+  .header-info h1 { font-size: 22px; letter-spacing: 1px; }
+  .header-info .date { color: var(--sub); font-size: 13px; margin-top: 4px; }
+  .gauge-box { width: 190px; height: 150px; }
+  .state-badge { display: inline-block; padding: 6px 16px; border-radius: 20px; font-size: 15px; font-weight: 700; margin-top: 8px; }
+  .badge-strong { background: rgba(230,69,69,.16); color: var(--red); border: 1px solid rgba(230,69,69,.4); }
+  .badge-osc { background: rgba(217,165,20,.14); color: var(--gold); border: 1px solid rgba(217,165,20,.4); }
+  .badge-weak { background: rgba(26,158,90,.14); color: var(--green); border: 1px solid rgba(26,158,90,.4); }
+  .badge-danger { background: rgba(230,69,69,.25); color: #ff8080; border: 1px solid rgba(230,69,69,.6); }
+  .meta-cards { display: flex; gap: 12px; margin-left: auto; flex-wrap: wrap; }
+  .meta-card { background: var(--card2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; min-width: 110px; }
+  .meta-card .label { color: var(--sub); font-size: 12px; }
+  .meta-card .value { font-size: 17px; font-weight: 700; margin-top: 2px; }
+  .manage-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--blue); color: #fff;
+    text-decoration: none; padding: 9px 16px; border-radius: 10px; font-size: 14px; font-weight: 600;
+    margin-left: auto; white-space: nowrap; }
+  .manage-btn:hover { opacity: .85; }
+
+  /* Section */
+  .section { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; margin-bottom: 20px; }
+  .section h2 { font-size: 17px; margin-bottom: 14px; padding-left: 10px; border-left: 3px solid var(--blue); }
+  .section h2 .weight { color: var(--sub); font-size: 12px; font-weight: 400; margin-left: 8px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .chart { width: 100%; height: 300px; }
+  .chart.small { height: 240px; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { color: var(--sub); text-align: left; font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 8px 10px; border-bottom: 1px solid rgba(42,48,64,.5); }
+  tr:hover td { background: rgba(90,140,255,.05); }
+  .up { color: var(--red); }
+  .down { color: var(--green); }
+  .grade-A { color: var(--red); font-weight: 700; }
+  .grade-B { color: var(--gold); font-weight: 700; }
+  .grade-C { color: var(--blue); font-weight: 700; }
+  .grade-D { color: var(--green); font-weight: 700; }
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; }
+  .pill-low { background: rgba(26,158,90,.15); color: var(--green); }
+  .pill-mid { background: rgba(217,165,20,.15); color: var(--gold); }
+  .pill-high { background: rgba(230,69,69,.18); color: #ff8080; }
+
+  /* Markdown */
+  .md h3 { margin: 14px 0 8px; font-size: 15px; color: var(--blue); }
+  .md p { margin: 6px 0; color: #c8cdd9; }
+  .md ul, .md li { margin-left: 18px; color: #c8cdd9; }
+  .md blockquote { border-left: 3px solid var(--sub); padding-left: 12px; color: var(--sub); margin: 10px 0; }
+
+  .warn-box { background: rgba(217,165,20,.1); border: 1px solid rgba(217,165,20,.3); border-radius: 8px; padding: 10px 14px; color: var(--gold); font-size: 12px; margin-bottom: 12px; }
+  .footer { text-align: center; color: var(--sub); font-size: 12px; margin-top: 30px; }
+  .no-echarts .chart { display: none; }
+  .no-echarts .fallback-table { display: block !important; }
+  .fallback-table { display: none; }
+  @media (max-width: 900px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ======== Header ======== -->
+  <header>
+    <div class="header-info">
+      <h1>📊 每日市场复盘</h1>
+      <div class="date">数据日期：{{ date }}　|　生成时间：{{ generated_at }}　|　数据源：{{ data_sources }}</div>
+      <span class="state-badge {{ badge_class }}">{{ market_state }}</span>
+    </div>
+    <div class="gauge-box"><div id="gauge_score" class="chart"></div></div>
+    <div class="meta-cards">
+      <div class="meta-card"><div class="label">市场评分</div><div class="value" style="color:var(--gold)">{{ market_score }}/100</div></div>
+      <div class="meta-card"><div class="label">风险等级</div><div class="value">{{ risk_level }}</div></div>
+      <div class="meta-card"><div class="label">市场情绪</div><div class="value" style="font-size:13px">{{ sentiment_label }}</div></div>
+      <div class="meta-card"><div class="label">上涨/下跌</div><div class="value" style="font-size:15px"><span class="up">{{ up_count }}</span> / <span class="down">{{ down_count }}</span></div></div>
+      <div class="meta-card"><div class="label">涨停 / 跌停</div><div class="value" style="font-size:15px"><span class="up">{{ limit_up }}</span> / <span class="down">{{ limit_down }}</span></div></div>
+    </div>
+    <a class="manage-btn" href="http://127.0.0.1:8787" target="_blank" title="添加/删除自选股">＋ 管理自选股</a>
+  </header>
+
+  {% if warnings %}
+  <div class="warn-box">⚠️ 数据提示：{{ warnings }}</div>
+  {% endif %}
+
+  <!-- ======== A股概览 ======== -->
+  <div class="section">
+    <h2>A股市场概览 <span class="weight">★★★★★ 权重最高</span></h2>
+    <div class="grid2">
+      <div>
+        <table>
+          <thead><tr><th>指数</th><th style="text-align:right">收盘</th><th style="text-align:right">涨跌幅</th><th style="text-align:right">成交额</th><th style="text-align:right">主力资金</th><th style="text-align:right">MA20</th><th style="text-align:right">MA60</th></tr></thead>
+          <tbody>
+          {% for i in indices %}
+            <tr>
+              <td>{{ i.name }}</td>
+              <td style="text-align:right">{{ i.close if i.close is not none else '—' }}</td>
+              <td style="text-align:right" class="{{ 'up' if (i.pct_change or 0) >= 0 else 'down' }}">{{ i.pct_change if i.pct_change is not none else '—' }}%</td>
+              <td style="text-align:right">{{ fmt_amount(i.amount) }}</td>
+              <td style="text-align:right" class="{{ 'up' if (i.main_net_inflow or 0) >= 0 else 'down' }}">{{ fmt_amount(i.main_net_inflow) }}</td>
+              <td style="text-align:right">{{ '%.1f'|format(i.ma20) if i.ma20 else '—' }}</td>
+              <td style="text-align:right">{{ '%.1f'|format(i.ma60) if i.ma60 else '—' }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <div id="chart_indices" class="chart"></div>
+        <div class="fallback-table">
+          <table><thead><tr><th>指数</th><th>涨跌幅</th></tr></thead><tbody>
+          {% for i in indices %}<tr><td>{{ i.name }}</td><td class="{{ 'up' if (i.pct_change or 0) >= 0 else 'down' }}">{{ i.pct_change }}%</td></tr>{% endfor %}
+          </tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="grid2" style="margin-top:16px">
+      <div>
+        <div id="chart_sentiment" class="chart small"></div>
+        <div class="fallback-table"><table><thead><tr><th>指标</th><th>数值</th></tr></thead><tbody>
+          <tr><td>上涨家数</td><td class="up">{{ up_count }}</td></tr>
+          <tr><td>下跌家数</td><td class="down">{{ down_count }}</td></tr>
+          <tr><td>涨停家数</td><td class="up">{{ limit_up }}</td></tr>
+          <tr><td>跌停家数</td><td class="down">{{ limit_down }}</td></tr>
+          <tr><td>两市成交额</td><td>{{ fmt_amount(total_amount) }}</td></tr>
+        </tbody></table></div>
+      </div>
+      <div>
+        <div id="chart_sector_bar" class="chart small"></div>
+        <div class="fallback-table"><table><thead><tr><th>行业</th><th>涨跌幅</th><th>评级</th></tr></thead><tbody>
+        {% for s in sectors %}<tr><td>{{ s.name }}</td><td class="{{ 'up' if (s.pct_change or 0) >= 0 else 'down' }}">{{ s.pct_change if s.pct_change is not none else '—' }}%</td><td>{{ s.strength }}</td></tr>{% endfor %}
+        </tbody></table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== 行业板块 ======== -->
+  <div class="section">
+    <h2>行业板块分析 <span class="weight">强弱评级 + 主力资金流向（14 关注行业）</span></h2>
+    <div class="grid2">
+      <div>
+        <div id="chart_sector_inflow" class="chart"></div>
+        <div class="fallback-table"><table><thead><tr><th>行业</th><th>资金流向</th></tr></thead><tbody>
+        {% for s in sectors %}<tr><td>{{ s.name }}</td><td class="{{ 'up' if (s.main_net_inflow or 0) >= 0 else 'down' }}">{{ fmt_amount(s.main_net_inflow) }}</td></tr>{% endfor %}
+        </tbody></table></div>
+      </div>
+      <div>
+        <table>
+          <thead><tr><th>排名</th><th>行业</th><th style="text-align:right">涨跌幅</th><th style="text-align:right">主力资金</th><th>强弱</th><th>热度</th><th>领涨股</th></tr></thead>
+          <tbody>
+          {% for s in sectors %}
+            <tr>
+              <td>{{ s.rank if s.rank else '—' }}</td>
+              <td>{{ s.name }}</td>
+              <td style="text-align:right" class="{{ 'up' if (s.pct_change or 0) >= 0 else 'down' }}">{{ s.pct_change if s.pct_change is not none else '—' }}%</td>
+              <td style="text-align:right" class="{{ 'up' if (s.main_net_inflow or 0) >= 0 else 'down' }}">{{ fmt_amount(s.main_net_inflow) }}</td>
+              <td>{{ s.strength }}</td>
+              <td>{{ s.heat if s.heat is not none else '—' }}</td>
+              <td>{{ s.leader or '—' }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== 自选股票 ======== -->
+  <div class="section">
+    <h2>自选股票分析 <span class="weight">★★★★★ {{ stocks|length }} 只跟踪标的</span></h2>
+    <table>
+      <thead><tr>
+        <th>股票</th><th style="text-align:right">收盘价</th><th style="text-align:right">涨跌幅</th><th style="text-align:right">换手率</th>
+        <th style="text-align:right">PE</th><th style="text-align:right">PB</th><th>趋势</th><th>技术状态</th><th>风险</th><th>基本面</th><th>评级</th>
+      </tr></thead>
+      <tbody>
+      {% for s in stocks %}
+        <tr>
+          <td>{{ s.name }}<br><span style="color:var(--sub);font-size:11px">{{ s.code }}</span></td>
+          <td style="text-align:right">{{ s.close if s.close is not none else '—' }}</td>
+          <td style="text-align:right" class="{{ 'up' if (s.pct_change or 0) >= 0 else 'down' }}">{{ s.pct_change if s.pct_change is not none else '—' }}%</td>
+          <td style="text-align:right">{{ s.turnover_rate if s.turnover_rate is not none else '—' }}%</td>
+          <td style="text-align:right">{{ '%.1f'|format(s.pe) if s.pe else '—' }}</td>
+          <td style="text-align:right">{{ '%.2f'|format(s.pb) if s.pb else '—' }}</td>
+          <td>{{ s.trend }}</td>
+          <td style="font-size:12px">{{ s.tech_state }}<br><span style="color:var(--sub)">{{ s.tech_position }}</span></td>
+          <td><span class="pill pill-{{ 'low' if s.risk_level=='低' else ('mid' if s.risk_level=='中' else 'high') }}">{{ s.risk_level }}</span></td>
+          <td style="font-size:12px">{{ s.fundamental_grade }}<br>
+            <span style="color:var(--sub)">
+              {% if s.roe is not none %}ROE {{ '%.1f'|format(s.roe) }}%{% endif %}
+              {% if s.revenue_yoy is not none %} · 营收 {{ s.revenue_yoy|round(1) }}%{% endif %}
+              {% if s.gross_margin is not none %} · 毛利 {{ '%.1f'|format(s.gross_margin) }}%{% endif %}
+            </span>
+          </td>
+          <td><span class="grade-{{ s.grade }}">{{ s.grade }}</span></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <div style="margin-top:14px">
+      <div id="chart_stocks" class="chart" style="height:260px"></div>
+      <div class="fallback-table"><table><thead><tr><th>股票</th><th>涨跌幅</th><th>评级</th></tr></thead><tbody>
+      {% for s in stocks %}<tr><td>{{ s.name }}</td><td class="{{ 'up' if (s.pct_change or 0) >= 0 else 'down' }}">{{ s.pct_change }}%</td><td>{{ s.grade }}</td></tr>{% endfor %}
+      </tbody></table></div>
+      <div id="chart_kline" class="chart" style="height:280px"></div>
+    </div>
+  </div>
+
+  <!-- ======== 商品期货 ======== -->
+  <div class="section">
+    <h2>商品期货 <span class="weight">★★ 观察</span></h2>
+    <div class="grid2">
+      <div><div id="chart_futures" class="chart small"></div>
+        <div class="fallback-table"><table><thead><tr><th>品种</th><th>收盘</th><th>涨跌幅</th></tr></thead><tbody>
+        {% for f in futures %}<tr><td>{{ f.name }}</td><td>{{ f.close if f.close is not none else '—' }}</td><td class="{{ 'up' if (f.pct_change or 0) >= 0 else 'down' }}">{{ f.pct_change if f.pct_change is not none else '—' }}%</td></tr>{% endfor %}
+        </tbody></table></div>
+      </div>
+      <div>
+        <table>
+          <thead><tr><th>品种</th><th style="text-align:right">收盘</th><th style="text-align:right">涨跌幅</th><th>趋势</th><th>风险提示</th></tr></thead>
+          <tbody>
+          {% for f in futures %}
+            <tr>
+              <td>{{ f.name }}</td>
+              <td style="text-align:right">{{ f.close if f.close is not none else '—' }}</td>
+              <td style="text-align:right" class="{{ 'up' if (f.pct_change or 0) >= 0 else 'down' }}">{{ f.pct_change if f.pct_change is not none else '—' }}%</td>
+              <td>{{ f.trend }}</td>
+              <td style="font-size:12px;color:var(--sub)">{{ f.risk_hint }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== 数字货币 ======== -->
+  <div class="section">
+    <h2>数字货币 <span class="weight">★ 辅助观察，不构成投资建议</span></h2>
+    <div class="grid3">
+      {% for c in crypto %}
+      <div class="meta-card" style="min-width:0">
+        <div class="label">{{ c.name }}（{{ c.symbol }}）</div>
+        <div class="value">${{ '%.0f'|format(c.price) if c.price else '—' }}</div>
+        <div class="value" style="font-size:14px" class="{{ 'up' if (c.pct_change or 0) >= 0 else 'down' }}">{{ c.pct_change if c.pct_change is not none else '—' }}% / 24h</div>
+        <div style="font-size:12px;color:var(--sub);margin-top:4px">情绪：{{ c.sentiment }}　风险：{{ c.risk_level }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    <div style="margin-top:14px"><div id="chart_crypto" class="chart small"></div></div>
+  </div>
+
+  <!-- ======== AI 总结 ======== -->
+  <div class="section">
+    <h2>AI 每日总结 <span class="weight">市场总结 + 基金经理视角</span></h2>
+    <div class="grid2">
+      <div class="md">{{ market_summary_html|safe }}</div>
+      <div class="md">{{ manager_view_html|safe }}</div>
+    </div>
+  </div>
+
+  <div class="footer">本报告由 AI 自动化系统每日生成，数据来源于公开行情接口，仅供参考，不构成投资建议。</div>
+</div>
+
+<!-- ECharts 加载：CDN → 本地 vendor → 纯表格降级 -->
+<script src="{{ echarts_cdn }}"></script>
+<script>
+  if (typeof echarts === 'undefined') {
+    document.write('<script src="data/vendor/echarts.min.js"><\/script>');
+  }
+  window.addEventListener('load', function () {
+    if (typeof echarts === 'undefined') { document.body.classList.add('no-echarts'); }
+  });
+</script>
+<script>var REPORT_DATA = {{ data_json|safe }};</script>
+{{ charts_js|safe }}
+</body>
+</html>

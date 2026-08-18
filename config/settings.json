@@ -1,0 +1,58 @@
+{
+  "cloud_mode": false,
+  "system": {
+    "timezone": "Asia/Shanghai",
+    "run_hour": 17,
+    "run_minute": 0,
+    "report_dir": "data/reports",
+    "db_path": "data/market.db",
+    "raw_dir": "data/raw",
+    "vendor_echarts": "data/vendor/echarts.min.js"
+  },
+  "desktop_sync": {
+    "enabled": true,
+    "folder": "每日市场复盘报告"
+  },
+  "data_source": {
+    "prefer": "agent",
+    "fallback": "akshare",
+    "akshare_http_fallback": true,
+    "binance_enabled": true,
+    "timeout_seconds": 30
+  },
+  "retry": {
+    "retries": 3,
+    "backoff_seconds": [1, 2, 4]
+  },
+  "market_state": {
+    "weights": {
+      "index_pct": 30,
+      "advance_ratio": 25,
+      "limit_up_down": 15,
+      "amount_change": 15,
+      "main_inflow": 15
+    },
+    "score_thresholds": {
+      "strong_up": 80,
+      "osc_strong": 65,
+      "osc_neutral": 50,
+      "weak_down": 35
+    },
+    "risk_levels": { "low": 60, "medium": 40 }
+  },
+  "technical": {
+    "ma_windows": [5, 10, 20, 60],
+    "rsi_period": 14,
+    "kdj_period": 9,
+    "boll_period": 20,
+    "boll_std": 2
+  },
+  "echarts": {
+    "cdn_url": "https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js",
+    "fallback_vendor": true
+  },
+  "trading": {
+    "weekends_off": true,
+    "custom_trade_dates": []
+  }
+}

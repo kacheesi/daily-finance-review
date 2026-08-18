@@ -1,0 +1,34 @@
+{
+  "_comment": "市场标的代码映射。em=东方财富代码(AkShare/东财HTTP)，tdx=通达信代码(MCP tdx_quotes)，sin=新浪代码(期货)，binance=币安交易对",
+  "indices": [
+    { "code": "sh000001", "tdx": "999999", "name": "上证指数", "weight": "main" },
+    { "code": "sz399001", "tdx": "399001", "name": "深证成指", "weight": "main" },
+    { "code": "sz399006", "tdx": "399006", "name": "创业板指", "weight": "main" },
+    { "code": "sh000688", "tdx": "000688", "name": "科创50", "weight": "secondary" },
+    { "code": "sh000300", "tdx": "000300", "name": "沪深300", "weight": "main" },
+    { "code": "sh000905", "tdx": "000905", "name": "中证500", "weight": "secondary" },
+    { "code": "sh000852", "tdx": "000852", "name": "中证1000", "weight": "secondary" },
+    { "code": "csi930050", "tdx": "930050", "name": "中证A50", "weight": "secondary" },
+    { "code": "sh000510", "tdx": "000510", "name": "中证A500", "weight": "secondary" }
+  ],
+  "sectors": [
+    "消费", "白酒", "食品饮料", "医药医疗", "AI人工智能", "半导体",
+    "存储芯片", "机器人", "新能源", "金融", "地产", "有色金属",
+    "军工", "电力能源"
+  ],
+  "futures": [
+    { "symbol": "AU0", "sin": "AU0", "tdx": "AU0", "name": "沪金", "category": "贵金属" },
+    { "symbol": "AG0", "sin": "AG0", "tdx": "AG0", "name": "沪银", "category": "贵金属" },
+    { "symbol": "SC0", "sin": "SC0", "tdx": "SC0", "name": "原油", "category": "能源" },
+    { "symbol": "CU0", "sin": "CU0", "tdx": "CU0", "name": "沪铜", "category": "有色" },
+    { "symbol": "RB0", "sin": "RB0", "tdx": "RB0", "name": "螺纹钢", "category": "黑色" },
+    { "symbol": "I0", "sin": "I0", "tdx": "I0", "name": "铁矿石", "category": "黑色" },
+    { "symbol": "M0", "sin": "M0", "tdx": "M0", "name": "豆粕", "category": "农产品" },
+    { "symbol": "C0", "sin": "C0", "tdx": "C0", "name": "玉米", "category": "农产品" },
+    { "symbol": "Y0", "sin": "Y0", "tdx": "Y0", "name": "豆油", "category": "农产品" }
+  ],
+  "crypto": [
+    { "symbol": "BTCUSDT", "name": "Bitcoin" },
+    { "symbol": "ETHUSDT", "name": "Ethereum" }
+  ]
+}

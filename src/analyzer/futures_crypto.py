@@ -1,0 +1,59 @@
+"""商品期货与数字货币分析"""
+import logging
+
+logger = logging.getLogger("daily_review.analyzer.futures_crypto")
+
+
+def analyze_futures(futures: list) -> list:
+    """期货：当日涨跌 + 趋势方向 + 风险提示"""
+    out = []
+    for f in futures:
+        pct = f.get("pct_change")
+        if pct is None:
+            trend, hint = "数据缺失", "数据源不可用，未生成提示"
+        elif pct >= 2:
+            trend, hint = "强势上行", "涨幅显著，关注追高风险与持仓波动"
+        elif pct > 0:
+            trend, hint = "温和上行", "偏多运行，关注上方压力位"
+        elif pct <= -2:
+            trend, hint = "显著回落", "跌幅较大，注意止损与情绪修复"
+        elif pct < 0:
+            trend, hint = "温和回落", "偏弱运行，关注下方支撑位"
+        else:
+            trend, hint = "横盘整理", "方向不明，观望为主"
+        out.append({
+            "symbol": f.get("symbol"), "name": f.get("name"),
+            "close": f.get("close"), "pct_change": pct,
+            "trend": trend, "risk_hint": hint,
+            "category": f.get("category", ""),
+        })
+    return out
+
+
+def analyze_crypto(crypto: list, histories: dict = None) -> list:
+    """币：价格变化 + 情绪 + 风险（仅辅助观察）"""
+    out = []
+    for c in crypto:
+        pct = c.get("pct_change")
+        if pct is None:
+            sentiment, risk = "数据缺失", "高"
+        elif pct >= 5:
+            sentiment, risk = "市场贪婪", "高（涨幅大，波动加剧）"
+        elif pct <= -5:
+            sentiment, risk = "市场恐慌", "高（跌幅大，注意波动）"
+        elif pct > 0:
+            sentiment, risk = "偏乐观", "中"
+        else:
+            sentiment, risk = "偏谨慎", "中"
+        hist = (histories or {}).get(c.get("symbol"), [])
+        closes = [h.get("close") for h in hist if h.get("close") is not None]
+        week_high = max(closes) if closes else None
+        week_low = min(closes) if closes else None
+        out.append({
+            "symbol": c.get("symbol"), "name": c.get("name"),
+            "price": c.get("price"), "pct_change": pct,
+            "sentiment": sentiment, "risk_level": risk,
+            "week_high": week_high, "week_low": week_low,
+            "history": hist,
+        })
+    return out

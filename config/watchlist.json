@@ -1,0 +1,17 @@
+{
+  "_comment": "自选股票池（仅持仓）。支持 scripts/import_watchlist.py 从 Excel/CSV/JSON 导入合并",
+  "watchlist": [
+    { "code": "512170", "name": "医疗ETF" },
+    { "code": "513180", "name": "恒生科技ETF" },
+    { "code": "159151", "name": "食品ETF" },
+    { "code": "159928", "name": "主要消费ETF" },
+    { "code": "511010", "name": "国债" },
+    { "code": "515650", "name": "消费50ETF" },
+    { "code": "688111", "name": "金山办公" },
+    { "code": "159819", "name": "人工智能ETF" },
+    { "code": "159560", "name": "芯片ETF" },
+    { "code": "159530", "name": "机器人ETF" },
+    { "code": "159593", "name": "中证A50ETF" },
+    { "code": "563360", "name": "中证A500ETF" }
+  ]
+}

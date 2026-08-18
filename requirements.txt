@@ -1,0 +1,7 @@
+requests>=2.31
+pandas>=2.2
+numpy>=1.26
+jinja2>=3.1
+markdown>=3.5
+# akshare 为可选兜底源（国内环境可用；云端/海外可不装，代码自动降级）:
+# akshare>=1.14
