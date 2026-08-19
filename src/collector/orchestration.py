@@ -38,7 +38,8 @@ def _empty_collection(date: str) -> dict:
         "indices": [], "market_sentiment": {}, "sectors": [],
         "stocks": [], "stock_history": {}, "index_history": {},
         "futures": [], "crypto": [], "fundamentals": {},
-        "crypto_history": {}, "source_status": {}, "warnings": [],
+        "crypto_history": {}, "asia_indices": [],
+        "source_status": {}, "warnings": [],
     }
 
 
@@ -175,6 +176,17 @@ def _collect_with_script(date: str) -> dict:
         k_ok, kline = coingecko_source.fetch_crypto_klines(c["symbol"])
         if k_ok:
             data["crypto_history"][c["symbol"]] = kline
+
+    # ---- 7. 亚太指数（日韩，东财国际指数） ----
+    asia_ok, asia = eastmoney_source.fetch_asia_indices(codes.get("asia_indices", []))
+    data["asia_indices"] = asia
+    data["source_status"]["asia"] = "ok" if asia_ok else "missing"
+    if asia_ok:
+        for a in asia:
+            k_ok2, kline2 = eastmoney_source.fetch_asia_kline(a["code"])
+            a["kline"] = kline2 if k_ok2 else []
+    else:
+        data["warnings"].append("亚太指数(日韩)数据缺失")
 
     save_collection(data, collection_path(PROJECT_ROOT, date))
     logger.info("脚本采集完成 -> %s (status=%s)", collection_path(PROJECT_ROOT, date), data["source_status"])

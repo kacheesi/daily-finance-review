@@ -6,7 +6,7 @@ logger = logging.getLogger("daily_review.ai.rule")
 
 
 def generate_market_summary(market: dict, indices: list, sectors: list, stocks: list,
-                            futures: list, crypto: list) -> str:
+                            futures: list, crypto: list, asia_indices: list = None) -> str:
     """市场总结 5 问（Markdown）"""
     score = market.get("market_score")
     state = market.get("market_state")
@@ -26,6 +26,11 @@ def generate_market_summary(market: dict, indices: list, sectors: list, stocks: 
         lines.append(f"- 主要指数平均涨跌 {avg}%，其中 **{best['name']}** 领涨（{best['pct_change']}%）。"
                      f"市场总体处于「{state}」，情绪为「{market.get('sentiment_label','中性')}」。")
     lines.append(f"- 全市场上涨 {up} 家 / 下跌 {down} 家，涨停 {lu} 家 / 跌停 {ld} 家。")
+
+    # 亚太市场（日韩）
+    asia_txt = _asia_summary(asia_indices)
+    if asia_txt:
+        lines.append(f"- 亚太市场：{asia_txt}")
 
     lines.append("\n### 2. 哪些资金正在流入？")
     with_inflow = [i for i in indices if i.get("main_net_inflow") is not None and i["main_net_inflow"] > 0]
@@ -108,3 +113,17 @@ def _fmt_flow(v):
     if abs(v) >= 1e4:
         return f"{v / 1e4:.0f}万"
     return f"{v:.0f}"
+
+
+def _asia_summary(asia_indices: list) -> str:
+    """日韩股市一句话概括"""
+    if not asia_indices:
+        return ""
+    parts = []
+    for a in asia_indices:
+        pct = a.get("pct_change")
+        if pct is None:
+            parts.append(f"{a.get('name','')} 数据缺失")
+        else:
+            parts.append(f"{a.get('name','')} {'涨' if pct >= 0 else '跌'}{abs(pct):.2f}%")
+    return "；".join(parts) + "（当日收盘）"

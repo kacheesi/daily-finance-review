@@ -78,16 +78,17 @@ def run_daily(target_date: str = None, source: str = "script",
         collection.get("stocks", []), stock_history,
         collection.get("fundamentals", {}), settings)
 
-    # 2.5 期货 / 币
+    # 2.5 期货 / 币 / 亚太(日韩)
     futures = fc.analyze_futures(collection.get("futures", []))
     crypto = fc.analyze_crypto(collection.get("crypto", []), collection.get("crypto_history", {}))
+    asia_indices = fc.analyze_asia(collection.get("asia_indices", []))
 
     # 3. AI 总结（规则兜底；注入 ai_summary/ai_view 时使用外部生成内容）
     if ai_summary and os.path.exists(ai_summary):
         market_summary = open(ai_summary, encoding="utf-8").read()
     else:
         market_summary = generate_market_summary(market, collection.get("indices", []),
-                                                 sectors, stocks, futures, crypto)
+                                                 sectors, stocks, futures, crypto, asia_indices)
     if ai_view and os.path.exists(ai_view):
         manager_view = open(ai_view, encoding="utf-8").read()
     else:
@@ -106,6 +107,7 @@ def run_daily(target_date: str = None, source: str = "script",
         "stocks": stocks,
         "futures": futures,
         "crypto": crypto,
+        "asia_indices": asia_indices,
         "stock_history": stock_history,
         "stock_indicators": stock_indicators,
         "market_summary": market_summary,
@@ -121,6 +123,13 @@ def run_daily(target_date: str = None, source: str = "script",
         _persist(db, d, analysis, collection)
     except Exception as e:
         logger.error("入库失败: %s", e)
+
+    # 5.1 亚太走势合并历史（数据库自积累，替代外部K线源）并重算趋势
+    for a in analysis.get("asia_indices", []):
+        hist = db.get_asia_history(a["code"], 10)
+        if hist and not a.get("kline"):
+            a["kline"] = hist
+    analysis["asia_indices"] = fc.analyze_asia(analysis.get("asia_indices", []))
 
     # 6. 渲染
     report_path = render_report(analysis)
@@ -209,6 +218,8 @@ def _persist(db: Database, d: str, analysis: dict, collection: dict) -> None:
                          for s in analysis["stocks"]])
     db.upsert_futures(d, analysis["futures"])
     db.upsert_crypto(d, analysis["crypto"])
+    db.upsert_asia(d, [{k: a.get(k) for k in ["code", "name", "market", "close", "pct_change"]}
+                       for a in analysis.get("asia_indices", []) if a.get("close") is not None])
     db.save_report(d, analysis["market_summary"], analysis["manager_view"],
                    os.path.join("data", "reports", f"{d}.html"), collection.get("source_status", {}))
 

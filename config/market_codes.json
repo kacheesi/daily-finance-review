@@ -30,5 +30,9 @@
   "crypto": [
     { "symbol": "BTCUSDT", "name": "Bitcoin" },
     { "symbol": "ETHUSDT", "name": "Ethereum" }
+  ],
+  "asia_indices": [
+    { "code": "100.N225", "name": "日经225", "market": "日本" },
+    { "code": "100.KS11", "name": "韩国KOSPI", "market": "韩国" }
   ]
 }

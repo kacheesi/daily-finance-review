@@ -78,6 +78,7 @@ def render_report(analysis: dict) -> str:
         "stocks": stocks,
         "futures": analysis.get("futures", []),
         "crypto": analysis.get("crypto", []),
+        "asia_indices": analysis.get("asia_indices", []),
         "market_sentiment": sentiment,
         "market_summary_html": md_lib.markdown(analysis.get("market_summary", ""), extensions=["tables"]),
         "manager_view_html": md_lib.markdown(analysis.get("manager_view", ""), extensions=["tables"]),
@@ -87,13 +88,15 @@ def render_report(analysis: dict) -> str:
         "data_json": json.dumps({
             "indices": indices, "sectors": analysis.get("sectors", []),
             "stocks": stocks, "futures": analysis.get("futures", []),
-            "crypto": analysis.get("crypto", []), "market_sentiment": sentiment,
+            "crypto": analysis.get("crypto", []), "asia_indices": analysis.get("asia_indices", []),
+            "market_sentiment": sentiment,
         }, ensure_ascii=False, default=str),
         "charts_js": build_charts_js({
             "market_score": analysis.get("market_score"),
             "indices": indices, "sectors": analysis.get("sectors", []),
             "stocks": stocks, "futures": analysis.get("futures", []),
-            "crypto": analysis.get("crypto", []), "market_sentiment": sentiment,
+            "crypto": analysis.get("crypto", []), "asia_indices": analysis.get("asia_indices", []),
+            "market_sentiment": sentiment,
         }),
     }
 

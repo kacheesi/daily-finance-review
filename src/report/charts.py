@@ -21,6 +21,7 @@ def build_charts_js(data: dict) -> str:
     charts.append(_stock_bar(data.get("stocks", [])))
     charts.append(_stock_kline(data.get("stocks", [])))
     charts.append(_futures_bar(data.get("futures", [])))
+    charts.append(_asia_chart(data.get("asia_indices", [])))
     charts.append(_crypto_line(data.get("crypto", [])))
 
     init = "\n".join(
@@ -212,6 +213,34 @@ def _futures_bar(futures):
         "xAxis": {"type": "value", "axisLabel": {"color": "#888"}, "splitLine": {"lineStyle": {"color": "rgba(255,255,255,0.06)"}}},
         "yAxis": {"type": "category", "data": [r[0] for r in rows], "axisLabel": {"color": "#ccc"}},
         "series": [{"type": "bar", "data": [{"value": r[1], "itemStyle": {"color": _color(r[1])}} for r in rows], "barWidth": 14}],
+    }
+
+
+
+def _asia_chart(asia_indices):
+    """日韩股市近10日走势（日经/KOSPI 双线，双 y 轴）"""
+    with_kline = [a for a in asia_indices if a.get('kline')]
+    if not with_kline:
+        return "chart_asia", {"title": {"text": "无数据", "textStyle": {"color": "#888"}}}
+    dates = [x['date'] for x in with_kline[0]['kline']]
+    colors = ['#5a8cff', '#f0c75e']
+    series = []
+    for i, a in enumerate(with_kline):
+        series.append({
+            "name": a.get('name', ''), "type": "line", "showSymbol": False, "smooth": True,
+            "data": [x.get('close') for x in a.get('kline', [])],
+            "yAxisIndex": i % 2, "lineStyle": {"width": 2, "color": colors[i % 2]},
+        })
+    return "chart_asia", {
+        "tooltip": _tooltip(),
+        "legend": {"textStyle": {"color": "#aaa"}, "top": 0},
+        "grid": {"left": 70, "right": 70, "top": 30, "bottom": 30},
+        "xAxis": {"type": "category", "data": dates, "axisLabel": {"color": "#888", "fontSize": 10}},
+        "yAxis": [
+            {"type": "value", "scale": True, "axisLabel": {"color": "#888"}, "splitLine": {"lineStyle": {"color": "rgba(255,255,255,0.06)"}}},
+            {"type": "value", "scale": True, "axisLabel": {"color": "#888"}, "splitLine": {"show": False}},
+        ],
+        "series": series,
     }
 
 

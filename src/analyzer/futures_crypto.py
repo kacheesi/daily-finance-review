@@ -57,3 +57,31 @@ def analyze_crypto(crypto: list, histories: dict = None) -> list:
             "history": hist,
         })
     return out
+
+
+def analyze_asia(indices: list) -> list:
+    """日韩股市：当日涨跌 + 近5日趋势描述"""
+    out = []
+    for a in indices:
+        pct = a.get("pct_change")
+        kline = a.get("kline") or []
+        closes = [x.get("close") for x in kline if x.get("close") is not None]
+        if len(closes) >= 3:
+            up_days = sum(1 for i in range(1, len(closes)) if closes[i] > closes[i - 1])
+            last5 = closes[-5:]
+            if len(last5) >= 2 and closes[-1] == max(last5):
+                trend = "近5日走强"
+            elif len(last5) >= 2 and closes[-1] == min(last5):
+                trend = "近5日走弱"
+            elif up_days >= len(closes) - 1:
+                trend = "连涨趋势"
+            elif up_days <= 1:
+                trend = "连跌趋势"
+            else:
+                trend = "区间震荡"
+        else:
+            trend = "数据不足"
+        if pct is not None:
+            trend += f"，当日{'上涨' if pct >= 0 else '下跌'}{abs(pct):.2f}%"
+        out.append({**a, "trend": trend})
+    return out

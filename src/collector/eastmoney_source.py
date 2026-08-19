@@ -266,3 +266,48 @@ def fetch_index_kline(code: str, days: int = 80) -> (bool, list):
     except Exception as e:
         logger.warning("东财指数K线失败 %s: %s", code, e)
         return (False, [])
+
+
+# ============ 亚太指数（日韩） ============
+def fetch_asia_indices(asia_cfg: list) -> (bool, list):
+    """日经225 / 韩国KOSPI 收盘行情（东财 push2delay 国际指数）"""
+    out = []
+    ok_any = False
+    for a in asia_cfg:
+        try:
+            d = _get(f"{BASE_QUOTE}/ulist.np/get",
+                     {"fltt": "2", "invt": "2", "fields": "f2,f3,f6,f12,f14", "secids": a["code"]})
+            diff = (d.get("data") or {}).get("diff") or []
+            x = diff[0] if isinstance(diff, list) and diff else {}
+            out.append({
+                "code": a["code"], "name": x.get("f14") or a["name"],
+                "market": a.get("market", ""),
+                "close": _num(x.get("f2")), "pct_change": _num(x.get("f3")),
+                "amount": _num(x.get("f6")),
+            })
+            if x.get("f2") is not None:
+                ok_any = True
+        except Exception as e:
+            logger.warning("东财亚太指数失败 %s: %s", a["code"], e)
+            out.append({"code": a["code"], "name": a["name"], "market": a.get("market", ""),
+                        "close": None, "pct_change": None, "amount": None})
+    return (ok_any, out)
+
+
+def fetch_asia_kline(code: str, days: int = 10) -> (bool, list):
+    """亚太指数近 N 日收盘（push2delay kline，可能为空则跳过）"""
+    try:
+        d = _get(f"{BASE_QUOTE}/stock/kline/get",
+                 {"secid": code, "klt": "101", "fqt": "1", "lmt": str(days),
+                  "end": "20500101", "fields1": "f1,f2,f3", "fields2": "f51,f52,f53,f54,f55"})
+        klines = ((d.get("data") or {}).get("klines")) or []
+        out = []
+        for k in klines:
+            p = k.split(",")
+            if len(p) >= 5:
+                out.append({"date": p[0], "open": _num(p[1]), "close": _num(p[2]),
+                            "high": _num(p[3]), "low": _num(p[4])})
+        return (True, out) if out else (False, [])
+    except Exception as e:
+        logger.warning("东财亚太K线失败 %s: %s", code, e)
+        return (False, [])

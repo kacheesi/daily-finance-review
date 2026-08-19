@@ -248,6 +248,34 @@
     </div>
   </div>
 
+  <!-- ======== 亚太市场（日韩） ======== -->
+  <div class="section">
+    <h2>亚太市场（日韩） <span class="weight">★★ 外围观察</span></h2>
+    <div class="grid2">
+      <div>
+        <div id="chart_asia" class="chart small"></div>
+        <div class="fallback-table"><table><thead><tr><th>市场</th><th>收盘</th><th>涨跌幅</th></tr></thead><tbody>
+        {% for a in asia_indices %}<tr><td>{{ a.name }}</td><td>{{ a.close if a.close is not none else '—' }}</td><td class="{{ 'up' if (a.pct_change or 0) >= 0 else 'down' }}">{{ a.pct_change if a.pct_change is not none else '—' }}%</td></tr>{% endfor %}
+        </tbody></table></div>
+      </div>
+      <div>
+        <table>
+          <thead><tr><th>市场</th><th style="text-align:right">收盘</th><th style="text-align:right">涨跌幅</th><th>趋势</th></tr></thead>
+          <tbody>
+          {% for a in asia_indices %}
+            <tr>
+              <td>{{ a.name }}<br><span style="color:var(--sub);font-size:11px">{{ a.market }}</span></td>
+              <td style="text-align:right">{{ a.close if a.close is not none else '—' }}</td>
+              <td style="text-align:right" class="{{ 'up' if (a.pct_change or 0) >= 0 else 'down' }}">{{ a.pct_change if a.pct_change is not none else '—' }}%</td>
+              <td>{{ a.trend }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <!-- ======== 数字货币 ======== -->
   <div class="section">
     <h2>数字货币 <span class="weight">★ 辅助观察，不构成投资建议</span></h2>
