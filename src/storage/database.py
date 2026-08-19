@@ -42,6 +42,9 @@ CREATE TABLE IF NOT EXISTS daily_crypto (
 CREATE TABLE IF NOT EXISTS daily_reports (
   date TEXT PRIMARY KEY, market_summary TEXT, manager_view TEXT,
   html_path TEXT, data_sources TEXT, created_at TEXT );
+CREATE TABLE IF NOT EXISTS daily_asia (
+  date TEXT, code TEXT, name TEXT, market TEXT, close REAL, pct_change REAL,
+  PRIMARY KEY(date,code) );
 """
 
 
@@ -141,6 +144,19 @@ class Database:
     def upsert_crypto(self, date: str, rows: list) -> None:
         self._bulk("daily_crypto", date, rows,
                    ["symbol", "price", "pct_change", "sentiment", "risk_level"])
+
+    def upsert_asia(self, date: str, rows: list) -> None:
+        """日韩指数当日收盘（供历史积累/走势图）"""
+        self._bulk("daily_asia", date, rows,
+                   ["code", "name", "market", "close", "pct_change"])
+
+    def get_asia_history(self, code: str, days: int = 10) -> list:
+        """亚太指数最近 N 日收盘（升序）"""
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT date, close FROM daily_asia WHERE code=? ORDER BY date DESC LIMIT ?",
+                (code, days)).fetchall()
+            return [{"date": r["date"], "close": r["close"]} for r in reversed(rows)]
 
     def _bulk(self, table: str, date: str, rows: list, cols: list) -> None:
         if not rows:

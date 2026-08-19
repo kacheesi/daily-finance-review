@@ -46,9 +46,19 @@ def run_daily(target_date: str = None, source: str = "script",
 
     logger.info("===== 开始执行 %s (source=%s) =====", d, source)
 
-    # 1. 采集（skip_collect 时读取已有 raw JSON）
-    collection = collect_all(d, source=source, force_refresh=force_refresh) if not skip_collect else \
-        collect_all(d, source="agent", force_refresh=False)
+    # 1. 采集（skip_collect 时读取已有 raw JSON；异常降级为最小结构，保证流程不中断）
+    try:
+        collection = collect_all(d, source=source, force_refresh=force_refresh) if not skip_collect else \
+            collect_all(d, source="agent", force_refresh=False)
+    except Exception as e:
+        logger.exception("采集异常，使用降级数据继续")
+        collection = {
+            "date": d, "indices": [], "market_sentiment": {}, "sectors": [],
+            "stocks": [], "stock_history": {}, "index_history": {},
+            "futures": [], "crypto": [], "fundamentals": {},
+            "crypto_history": {}, "asia_indices": [],
+            "source_status": {}, "warnings": [f"采集异常: {e}"],
+        }
     ss = collection.get("source_status", {})
 
     # 2. 分析
@@ -131,8 +141,12 @@ def run_daily(target_date: str = None, source: str = "script",
             a["kline"] = hist
     analysis["asia_indices"] = fc.analyze_asia(analysis.get("asia_indices", []))
 
-    # 6. 渲染
-    report_path = render_report(analysis)
+    # 6. 渲染（异常时生成错误页，避免云端工作流失败）
+    try:
+        report_path = render_report(analysis)
+    except Exception as e:
+        logger.exception("渲染异常，生成错误报告")
+        report_path = _fallback_report(d, f"报告渲染失败: {e}")
 
     # 6.1 桌面同步（最新报告自动复制到桌面文件夹 + zip）
     try:
@@ -146,6 +160,25 @@ def run_daily(target_date: str = None, source: str = "script",
     db.finish_run(d, "partial" if has_missing else "success", report_path)
     logger.info("===== %s 执行完成 status=%s =====", d, "partial" if has_missing else "success")
     return report_path
+
+
+def _fallback_report(d: str, error: str) -> str:
+    """采集/渲染异常时的降级报告（含错误信息，便于云端自查）"""
+    html = f"""<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
+<title>复盘生成失败 {d}</title>
+<style>body{{background:#101319;color:#e8eaf0;font-family:sans-serif;padding:40px;max-width:760px;margin:0 auto}}
+h1{{font-size:22px;color:#e64545}}pre{{background:#191d26;border:1px solid #2a3040;padding:16px;border-radius:10px;overflow:auto;color:#f0c75e;white-space:pre-wrap}}</style></head>
+<body><h1>⚠️ 当日报告生成失败（{d}）</h1>
+<p>生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+<pre>{error}</pre>
+<p style="color:#9aa3b5">可检查: 1) Actions 日志中「运行每日复盘」步骤的 Traceback；2) 数据源可达性。</p>
+</body></html>"""
+    os.makedirs(REPORT_DIR, exist_ok=True)
+    path = os.path.join(REPORT_DIR, "daily_report.html")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(html)
+    logger.error("已生成降级错误报告: %s | %s", path, error)
+    return path
 
 
 def catch_up(target_date: str = None) -> list:

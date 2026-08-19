@@ -11,7 +11,8 @@
   },
   "desktop_sync": {
     "enabled": true,
-    "folder": "每日市场复盘报告"
+    "folder": "每日市场复盘报告",
+    "create_zip": false
   },
   "data_source": {
     "prefer": "agent",
