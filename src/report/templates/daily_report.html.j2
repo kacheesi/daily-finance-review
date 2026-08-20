@@ -42,6 +42,24 @@
   .chart { width: 100%; height: 300px; }
   .chart.small { height: 240px; }
 
+  /* ETF 异动监测 */
+  .etf-banner { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 10px; margin-bottom: 14px; font-size: 13px; line-height: 1.6; }
+  .etf-banner.ok { background: rgba(26,158,90,.1); border: 1px solid rgba(26,158,90,.35); color: #6fd39e; }
+  .etf-banner.warn { background: rgba(240,160,32,.12); border: 1px solid rgba(240,160,32,.4); color: #f0c75e; }
+  .etf-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .etf-card { background: var(--card2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .etf-card .etf-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 8px; }
+  .etf-card .etf-name { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .etf-card .etf-price { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .etf-card .etf-meta { font-size: 11px; color: var(--sub); margin-bottom: 6px; }
+  .etf-card .etf-alert { font-size: 11px; color: var(--sub); line-height: 1.5; min-height: 16px; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; flex-shrink: 0; }
+  .pill.level-高 { background: rgba(230,69,69,.2); color: #ff8a8a; border: 1px solid rgba(230,69,69,.4); }
+  .pill.level-中 { background: rgba(240,160,32,.15); color: #f0c75e; border: 1px solid rgba(240,160,32,.35); }
+  .pill.level-低 { background: rgba(255,193,7,.12); color: #e6c36a; border: 1px solid rgba(255,193,7,.25); }
+  .pill.level-无 { background: rgba(120,130,150,.15); color: #9aa3b5; border: 1px solid rgba(120,130,150,.25); }
+  @media (max-width: 600px) { .etf-grid { grid-template-columns: 1fr; } }
+
   /* Tables */
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th { color: var(--sub); text-align: left; font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
@@ -252,36 +270,30 @@
   <div class="section">
     <h2>宽基 ETF 异动监测 <span class="weight">★★ 尾盘资金 / 放量 / 异动扫描</span></h2>
     {% if etfs %}
-    <div class="grid2">
+    <div class="etf-banner {{ 'ok' if etf_ok else 'warn' }}">
+      <span>{{ '✅' if etf_ok else '⚠️' }}</span>
+      <span>{{ etf_summary }}</span>
+    </div>
+    <div class="grid2" style="align-items:start">
       <div>
         <div id="chart_etf" class="chart small"></div>
-        <div class="fallback-table"><table><thead><tr><th>ETF</th><th>级别</th><th>尾盘占比</th></tr></thead><tbody>
-        {% for e in etfs %}<tr>
-          <td>{{ e.name }}</td>
-          <td class="{{ 'up' if e.level == '高' else ('warn' if e.level == '中' else '') }}">{{ e.level if e.level else '—' }}</td>
-          <td>{{ e.tail_ratio if e.tail_ratio is not none else '—' }}%</td>
-        </tr>{% endfor %}
-        </tbody></table></div>
       </div>
       <div>
-        <table>
-          <thead><tr><th>ETF</th><th style="text-align:right">收盘</th><th style="text-align:right">涨跌幅</th><th style="text-align:right">成交额</th><th style="text-align:right">换手</th><th style="text-align:right">量比</th><th style="text-align:right">尾盘占比</th><th style="text-align:right">尾盘涨跌</th><th>异动提示</th></tr></thead>
-          <tbody>
-          {% for e in etfs %}
-            <tr>
-              <td>{{ e.name }}</td>
-              <td style="text-align:right">{{ e.close if e.close is not none else '—' }}</td>
-              <td style="text-align:right" class="{{ 'up' if (e.pct_change or 0) >= 0 else 'down' }}">{{ e.pct_change if e.pct_change is not none else '—' }}%</td>
-              <td style="text-align:right">{{ fmt_amount(e.amount) }}</td>
-              <td style="text-align:right">{{ e.turnover if e.turnover is not none else '—' }}%</td>
-              <td style="text-align:right">{{ e.vol_ratio if e.vol_ratio is not none else '—' }}</td>
-              <td style="text-align:right">{{ e.tail_ratio if e.tail_ratio is not none else '—' }}%</td>
-              <td style="text-align:right" class="{{ 'up' if (e.tail_pct or 0) >= 0 else 'down' }}">{{ e.tail_pct if e.tail_pct is not none else '—' }}%</td>
-              <td style="font-size:11px;color:{{ '#e64545' if e.level == '高' else ('#f0a020' if e.level == '中' else 'var(--sub)') }}">{{ e.summary if e.summary else '—' }}</td>
-            </tr>
-          {% endfor %}
-          </tbody>
-        </table>
+        <div class="etf-grid">
+        {% for e in etfs %}
+          <div class="etf-card">
+            <div class="etf-head">
+              <span class="etf-name">{{ e.name }}</span>
+              <span class="pill level-{{ e.level }}">{{ e.level if e.level else '—' }}</span>
+            </div>
+            <div class="etf-price">{{ e.close if e.close is not none else '—' }}
+              <span class="{{ 'up' if (e.pct_change or 0) >= 0 else 'down' }}" style="font-size:13px;font-weight:600">{{ e.pct_change if e.pct_change is not none else '—' }}%</span>
+            </div>
+            <div class="etf-meta">量比 {{ e.vol_ratio if e.vol_ratio is not none else '—' }} · 尾盘占比 {{ e.tail_ratio if e.tail_ratio is not none else '—' }}% · 尾盘 {{ e.tail_pct if e.tail_pct is not none else '—' }}%</div>
+            <div class="etf-alert">{{ e.summary if e.summary else '—' }}</div>
+          </div>
+        {% endfor %}
+        </div>
       </div>
     </div>
     {% else %}
@@ -332,7 +344,13 @@
       </div>
       {% endfor %}
     </div>
-    <div style="margin-top:14px"><div id="chart_crypto" class="chart small"></div></div>
+    <div style="margin-top:14px">
+      <div class="grid2" style="gap:10px">
+      {% for c in crypto %}
+        <div id="chart_crypto_{{ c.symbol|lower }}" class="chart small"></div>
+      {% endfor %}
+      </div>
+    </div>
   </div>
 
   <!-- ======== AI 总结 ======== -->
