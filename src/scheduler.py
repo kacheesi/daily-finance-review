@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.analyzer import futures_crypto as fc
 from src.analyzer import sector as sector_analyzer
 from src.analyzer import stock_analyzer
+from src.analyzer.etf_monitor import analyze_etfs
 from src.analyzer.indicators import compute, last_indicators
 from src.analyzer.market_state import evaluate as evaluate_market
 from src.ai.rule_summary import generate_manager_view, generate_market_summary
@@ -17,15 +18,16 @@ from src.report.renderer import render_report
 from src.storage.database import Database
 from src.utils.logger import get_logger
 from src.utils.time_utils import is_trade_day, load_settings, load_watchlist
+from src.utils.time_utils import project_root
 
 logger = get_logger("daily_review.scheduler")
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_ROOT = project_root()
 REPORT_DIR = os.path.join(PROJECT_ROOT, "data", "reports")
 
 _STATUS_LABEL = {
     "indices": "指数", "sentiment": "情绪", "sectors": "板块", "stocks": "自选股",
-    "futures": "期货", "crypto": "币",
+    "futures": "期货", "crypto": "币", "asia": "亚太", "etfs": "宽基ETF",
 }
 
 
@@ -93,12 +95,15 @@ def run_daily(target_date: str = None, source: str = "script",
     crypto = fc.analyze_crypto(collection.get("crypto", []), collection.get("crypto_history", {}))
     asia_indices = fc.analyze_asia(collection.get("asia_indices", []))
 
+    # 2.6 宽基 ETF 异动监测
+    etf_results = analyze_etfs(collection.get("etf_monitor", {}))
+
     # 3. AI 总结（规则兜底；注入 ai_summary/ai_view 时使用外部生成内容）
     if ai_summary and os.path.exists(ai_summary):
         market_summary = open(ai_summary, encoding="utf-8").read()
     else:
         market_summary = generate_market_summary(market, collection.get("indices", []),
-                                                 sectors, stocks, futures, crypto, asia_indices)
+                                                 sectors, stocks, futures, crypto, asia_indices, etf_results)
     if ai_view and os.path.exists(ai_view):
         manager_view = open(ai_view, encoding="utf-8").read()
     else:
@@ -118,6 +123,7 @@ def run_daily(target_date: str = None, source: str = "script",
         "futures": futures,
         "crypto": crypto,
         "asia_indices": asia_indices,
+        "etfs": etf_results,
         "stock_history": stock_history,
         "stock_indicators": stock_indicators,
         "market_summary": market_summary,
@@ -136,7 +142,7 @@ def run_daily(target_date: str = None, source: str = "script",
 
     # 5.1 亚太走势合并历史（数据库自积累，替代外部K线源）并重算趋势
     for a in analysis.get("asia_indices", []):
-        hist = db.get_asia_history(a["code"], 10)
+        hist = db.get_asia_history(a["code"], 7)
         if hist and not a.get("kline"):
             a["kline"] = hist
     analysis["asia_indices"] = fc.analyze_asia(analysis.get("asia_indices", []))

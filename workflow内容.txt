@@ -1,0 +1,44 @@
+name: 每日金融复盘
+on:
+  schedule:
+    - cron: "5 9 * * *"
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+jobs:
+  build-report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 安装依赖
+        run: pip install -r requirements.txt
+      - name: 下载图表库
+        run: python scripts/seed_vendor.py
+      - name: 运行每日复盘
+        env:
+          DAILY_REVIEW_CLOUD: "1"
+          TZ: "Asia/Shanghai"
+        run: python run_daily.py --force
+      - name: 准备发布目录
+        run: |
+          mkdir -p _site/reports _site/data/vendor
+          cp data/reports/daily_report.html _site/index.html
+          cp data/reports/*.html _site/reports/ 2>/dev/null || true
+          cp data/vendor/echarts.min.js _site/data/vendor/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: 部署到 GitHub Pages
+        uses: actions/deploy-pages@v4

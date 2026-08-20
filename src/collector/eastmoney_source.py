@@ -294,7 +294,7 @@ def fetch_asia_indices(asia_cfg: list) -> (bool, list):
     return (ok_any, out)
 
 
-def fetch_asia_kline(code: str, days: int = 10) -> (bool, list):
+def fetch_asia_kline(code: str, days: int = 7) -> (bool, list):
     """亚太指数近 N 日收盘（push2delay kline，可能为空则跳过）"""
     try:
         d = _get(f"{BASE_QUOTE}/stock/kline/get",
@@ -311,3 +311,27 @@ def fetch_asia_kline(code: str, days: int = 10) -> (bool, list):
     except Exception as e:
         logger.warning("东财亚太K线失败 %s: %s", code, e)
         return (False, [])
+
+
+# ============ 宽基 ETF 当日分时（尾盘异动监测） ============
+def fetch_etf_trends(etf_cfg: list) -> (bool, dict):
+    """8 只宽基 ETF 当日分时（trends2，含每分钟成交额/均价）。
+    返回 {code: {"trends": ["2026-08-20 14:59,开,收,高,低,量,额,均价", ...], "preClose": float}}"""
+    out = {}
+    ok_any = False
+    for e in etf_cfg:
+        try:
+            d = _get(f"{BASE_QUOTE}/stock/trends2/get",
+                     {"secid": _stock_secid(e["code"]),
+                      "fields1": "f1,f2,f3,f4,f5,f6,f7,f8",
+                      "fields2": "f51,f52,f53,f54,f55,f56,f57,f58",
+                      "ndays": "1", "iscr": "0", "iscca": "0"})
+            data = d.get("data") or {}
+            trends = data.get("trends") or []
+            pre_close = _num(data.get("preClose"))
+            if trends:
+                out[e["code"]] = {"trends": trends, "preClose": pre_close}
+                ok_any = True
+        except Exception as ex:
+            logger.warning("东财 ETF 分时失败 %s: %s", e["code"], ex)
+    return (ok_any, out)

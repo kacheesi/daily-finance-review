@@ -5,10 +5,11 @@ import os
 import shutil
 import zipfile
 from datetime import datetime
+from src.utils.time_utils import project_root
 
 logger = logging.getLogger("daily_review.desktop_sync")
 
-_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_PROJECT_ROOT = project_root()
 
 
 def _desktop() -> str:
@@ -43,11 +44,12 @@ def sync(report_dir: str = None) -> str:
         for f in files:
             shutil.copy2(os.path.join(report_dir, f), os.path.join(target_dir, f))
 
-        # 更新 zip（覆盖旧包）
-        zip_path = target_dir + ".zip"
-        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-            for f in files:
-                zf.write(os.path.join(target_dir, f), arcname=os.path.join(folder, f))
+        # 更新 zip（可选，默认开启；settings.desktop_sync.create_zip=false 时关闭）
+        if cfg.get("create_zip", True):
+            zip_path = target_dir + ".zip"
+            with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+                for f in files:
+                    zf.write(os.path.join(target_dir, f), arcname=os.path.join(folder, f))
 
         with open(os.path.join(target_dir, "README.txt"), "w", encoding="utf-8") as f:
             f.write(f"共 {len(files)} 份报告 | 更新: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")

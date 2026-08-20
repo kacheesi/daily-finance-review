@@ -4,8 +4,9 @@ import os
 import sqlite3
 from datetime import datetime
 from typing import Optional
+from src.utils.time_utils import project_root
 
-_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_PROJECT_ROOT = project_root()
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS run_log (

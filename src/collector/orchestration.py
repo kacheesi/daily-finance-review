@@ -7,27 +7,28 @@ import os
 from src.collector import coingecko_source, eastmoney_source, sina_source, tencent_source
 from src.collector.base import collection_path, save_collection
 from src.utils.time_utils import load_market_codes, load_settings, load_watchlist
+from src.utils.time_utils import project_root
 
 logger = logging.getLogger("daily_review.collector.orchestration")
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+PROJECT_ROOT = project_root()
 
 # 用户行业 -> 板块名称匹配关键词（东财细分行业/新浪行业通用）
 SECTOR_MATCH = {
-    "消费": ["食品饮料", "零售", "家用电器", "消费", "白酒", "饮料"],
-    "白酒": ["白酒", "酿酒", "啤酒", "酒"],
-    "食品饮料": ["食品", "饮料", "乳品", "调味", "休闲食品", "预制"],
-    "医药医疗": ["医药", "医疗", "生物", "制药", "中药", "化学", "服务"],
-    "AI人工智能": ["人工智能", "软件", "计算机", "IT服务", "互联网", "AI", "算力", "数据"],
-    "半导体": ["半导体", "集成电路", "芯片", "元件"],
-    "存储芯片": ["存储", "半导体材料", "半导体设备"],
-    "机器人": ["机器人", "自动化", "通用设备", "工控"],
-    "新能源": ["光伏", "风电", "电池", "新能源", "电力设备", "储能"],
-    "金融": ["银行", "保险", "证券", "多元金融", "金融"],
-    "地产": ["房地产", "地产", "物业"],
-    "有色金属": ["有色", "贵金属", "工业金属", "小金属", "铜", "铝", "黄金"],
-    "军工": ["军工", "航天", "航空", "国防", "兵器"],
-    "电力能源": ["电力", "煤炭", "石油", "燃气", "能源", "电网"],
+    "消费": ["食品行业", "食品饮料", "零售", "家用电器", "家电", "消费", "白酒", "饮料", "商业百货"],
+    "白酒": ["白酒", "酿酒", "啤酒", "酒类"],
+    "食品饮料": ["食品行业", "食品饮料", "饮料", "乳品", "调味", "休闲食品", "预制", "白酒", "酿酒"],
+    "医药医疗": ["医药", "医疗", "生物", "制药", "中药", "化学", "服务", "医疗器械"],
+    "AI人工智能": ["人工智能", "软件", "计算机", "IT服务", "互联网", "AI", "算力", "数据", "电子信息", "电子"],
+    "半导体": ["半导体", "集成电路", "芯片", "元件", "电子器件", "电子信息"],
+    "存储芯片": ["存储", "半导体", "电子器件"],
+    "机器人": ["机器人", "自动化", "通用设备", "工控", "机械"],
+    "新能源": ["光伏", "风电", "电池", "新能源", "电力设备", "储能", "发电设备", "电力"],
+    "金融": ["银行", "保险", "证券", "多元金融", "金融行业", "金融"],
+    "地产": ["房地产", "地产", "物业", "开发区"],
+    "有色金属": ["有色", "贵金属", "工业金属", "小金属", "铜", "铝", "黄金", "金属"],
+    "军工": ["军工", "航天", "航空", "国防", "兵器", "船舶", "飞机"],
+    "电力能源": ["电力行业", "电力", "煤炭", "石油", "燃气", "能源", "电网", "发电设备"],
 }
 
 
@@ -39,6 +40,7 @@ def _empty_collection(date: str) -> dict:
         "stocks": [], "stock_history": {}, "index_history": {},
         "futures": [], "crypto": [], "fundamentals": {},
         "crypto_history": {}, "asia_indices": [],
+        "etf_monitor": {"spot": [], "trends": {}, "history": {}},
         "source_status": {}, "warnings": [],
     }
 
@@ -187,6 +189,24 @@ def _collect_with_script(date: str) -> dict:
             a["kline"] = kline2 if k_ok2 else []
     else:
         data["warnings"].append("亚太指数(日韩)数据缺失")
+
+    # ---- 8. 宽基 ETF 异动监测（东财分时 + spot + 腾讯日K基准） ----
+    etf_cfg = codes.get("etfs", [])
+    if etf_cfg:
+        ok_e, spot_e = eastmoney_source.fetch_stocks_spot(etf_cfg)
+        ok_t, trends_e = eastmoney_source.fetch_etf_trends(etf_cfg)
+        hist_e = {}
+        for e in etf_cfg:
+            k_ok3, kline3 = tencent_source.fetch_kline(e["code"], days=25)
+            if k_ok3:
+                hist_e[e["code"]] = kline3
+        data["etf_monitor"] = {"spot": spot_e if ok_e else [], "trends": trends_e, "history": hist_e}
+        data["source_status"]["etfs"] = "ok" if (ok_e and ok_t) else ("partial" if (ok_e or ok_t) else "missing")
+        if not (ok_e and ok_t):
+            data["warnings"].append("宽基ETF行情/分时部分缺失")
+    else:
+        data["etf_monitor"] = {"spot": [], "trends": {}, "history": {}}
+        data["source_status"]["etfs"] = "missing"
 
     save_collection(data, collection_path(PROJECT_ROOT, date))
     logger.info("脚本采集完成 -> %s (status=%s)", collection_path(PROJECT_ROOT, date), data["source_status"])

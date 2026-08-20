@@ -1,9 +1,16 @@
 """时间与交易日工具"""
 import json
 import os
+import sys
 from datetime import date, datetime, timedelta
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+def project_root() -> str:
+    """项目根目录：exe 场景用环境变量覆盖（数据写到 exe 旁），否则用代码位置推导"""
+    env = os.environ.get('DAILY_REVIEW_ROOT')
+    return env if env else _PROJECT_ROOT
 
 # 简单交易日历：2026年法定节假日调休补班（逐年维护，可扩展）
 _EXTRA_TRADE_DAYS = {
@@ -47,16 +54,27 @@ def today_str() -> str:
     return date.today().strftime("%Y-%m-%d")
 
 
+
+
+def _config_path(name: str) -> str:
+    """配置文件路径：exe 内置(_MEIPASS)优先，其次 exe 旁/项目目录"""
+    bundle = getattr(sys, '_MEIPASS', None)
+    if bundle:
+        p = os.path.join(bundle, 'config', name)
+        if os.path.exists(p):
+            return p
+    return os.path.join(project_root(), 'config', name)
+
 def load_settings() -> dict:
-    with open(os.path.join(_PROJECT_ROOT, "config", "settings.json"), encoding="utf-8") as f:
+    with open(_config_path("settings.json"), encoding="utf-8") as f:
         return json.load(f)
 
 
 def load_market_codes() -> dict:
-    with open(os.path.join(_PROJECT_ROOT, "config", "market_codes.json"), encoding="utf-8") as f:
+    with open(_config_path("market_codes.json"), encoding="utf-8") as f:
         return json.load(f)
 
 
 def load_watchlist() -> list:
-    with open(os.path.join(_PROJECT_ROOT, "config", "watchlist.json"), encoding="utf-8") as f:
+    with open(_config_path("watchlist.json"), encoding="utf-8") as f:
         return json.load(f).get("watchlist", [])

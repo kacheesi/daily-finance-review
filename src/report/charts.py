@@ -21,8 +21,9 @@ def build_charts_js(data: dict) -> str:
     charts.append(_stock_bar(data.get("stocks", [])))
     charts.append(_stock_kline(data.get("stocks", [])))
     charts.append(_futures_bar(data.get("futures", [])))
+    charts.append(_etf_chart(data.get("etfs", [])))
     charts.append(_asia_chart(data.get("asia_indices", [])))
-    charts.append(_crypto_line(data.get("crypto", [])))
+    charts.extend(_crypto_line(data.get("crypto", [])))
 
     init = "\n".join(
         f"initChart('{cid}', {json.dumps(opt, ensure_ascii=False)});" for cid, opt in charts
@@ -244,23 +245,59 @@ def _asia_chart(asia_indices):
     }
 
 
-def _crypto_line(crypto):
-    series = []
-    for c in crypto:
-        hist = c.get("history") or []
-        if hist:
-            series.append({"name": c["name"], "type": "line", "showSymbol": False,
-                           "data": [h["close"] for h in hist],
-                           "lineStyle": {"width": 2}, "smooth": True})
-    if not series:
-        return "chart_crypto", {"title": {"text": "无数据", "textStyle": {"color": "#888"}}}
-    dates = [h["date"] for h in (crypto[0].get("history") or [])]
-    return "chart_crypto", {
+
+def _etf_chart(etfs):
+    """宽基ETF尾盘监测：有异动→尾盘涨跌条形图；平时→尾盘成交占比条形图(18%参考线)"""
+    valid = [e for e in etfs if e.get('tail_pct') is not None or e.get('tail_ratio') is not None]
+    if not valid:
+        return "chart_etf", {"title": {"text": "无数据", "textStyle": {"color": "#888"}}}
+    abn = [e for e in etfs if e.get('level') in ("高", "中", "低") and e.get('tail_pct') is not None]
+    if abn:
+        names = [e['name'] for e in abn]
+        vals = [e['tail_pct'] for e in abn]
+        return "chart_etf", {
+            "tooltip": _tooltip(),
+            "title": {"text": "异动ETF尾盘涨跌(%)", "textStyle": {"color": "#aaa", "fontSize": 12}, "top": 0},
+            "grid": {"left": 60, "right": 20, "top": 28, "bottom": 30},
+            "xAxis": {"type": "category", "data": names, "axisLabel": {"color": "#ccc", "fontSize": 10, "interval": 0, "rotate": 20}},
+            "yAxis": {"type": "value", "axisLabel": {"color": "#888"}, "splitLine": {"lineStyle": {"color": "rgba(255,255,255,0.06)"}}},
+            "series": [{"type": "bar", "data": [{"value": round(v, 2), "itemStyle": {"color": RED if v >= 0 else GREEN}} for v in vals], "barWidth": 18}],
+        }
+    names = [e['name'] for e in valid]
+    vals = [e['tail_ratio'] for e in valid]
+    return "chart_etf", {
         "tooltip": _tooltip(),
-        "legend": {"textStyle": {"color": "#aaa"}, "top": 0},
-        "grid": {"left": 70, "right": 20, "top": 30, "bottom": 30},
-        "xAxis": {"type": "category", "data": dates, "axisLabel": {"color": "#888", "fontSize": 10}},
-        "yAxis": {"type": "value", "scale": True, "axisLabel": {"color": "#888"}, "splitLine": {"lineStyle": {"color": "rgba(255,255,255,0.06)"}}},
-        "series": series,
+        "title": {"text": "尾盘30分钟成交占比(%)", "textStyle": {"color": "#aaa", "fontSize": 12}, "top": 0},
+        "grid": {"left": 60, "right": 20, "top": 28, "bottom": 30},
+        "xAxis": {"type": "category", "data": names, "axisLabel": {"color": "#ccc", "fontSize": 10, "interval": 0, "rotate": 20}},
+        "yAxis": {"type": "value", "axisLabel": {"color": "#888"}, "splitLine": {"lineStyle": {"color": "rgba(255,255,255,0.06)"}}},
+        "series": [{"type": "bar", "data": [{"value": v, "itemStyle": {"color": '#5a8cff' if (v or 0) < 18 else RED}} for v in vals], "barWidth": 18,
+                     "markLine": {"silent": True, "symbol": "none", "label": {"formatter": "18%阈值", "color": "#f0c75e", "fontSize": 10},
+                                   "lineStyle": {"color": "#f0c75e", "type": "dashed"}, "data": [{"yAxis": 18}]}}],
     }
+
+
+def _crypto_line(crypto):
+    """每只币独立成图（BTC/ETH 价差大，共轴会压扁波动）"""
+    charts = []
+    colors = ["#f0a020", "#5a8cff", "#9b8cff"]
+    for i, c in enumerate(crypto):
+        hist = c.get("history") or []
+        if not hist:
+            continue
+        cid = f"chart_crypto_{c.get('symbol', 'coin').lower()}"
+        charts.append((cid, {
+            "tooltip": _tooltip(),
+            "title": {"text": f"{c['name']} 近7日走势", "textStyle": {"color": "#aaa", "fontSize": 12}, "top": 0},
+            "grid": {"left": 70, "right": 20, "top": 28, "bottom": 30},
+            "xAxis": {"type": "category", "data": [h["date"] for h in hist],
+                      "axisLabel": {"color": "#888", "fontSize": 10}},
+            "yAxis": {"type": "value", "scale": True, "axisLabel": {"color": "#888"},
+                      "splitLine": {"lineStyle": {"color": "rgba(255,255,255,0.06)"}}},
+            "series": [{"name": c["name"], "type": "line", "showSymbol": False, "smooth": True,
+                        "data": [h["close"] for h in hist], "lineStyle": {"width": 2, "color": colors[i % 3]}}],
+        }))
+    if not charts:
+        return [("chart_crypto", {"title": {"text": "无数据", "textStyle": {"color": "#888"}}})]
+    return charts
 

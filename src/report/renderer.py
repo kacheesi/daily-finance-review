@@ -2,18 +2,22 @@
 import json
 import logging
 import os
+import sys
 import shutil
 from datetime import datetime
 
 import markdown as md_lib
+from src.analyzer.etf_monitor import etf_overview
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from src.report.charts import build_charts_js
+from src.utils.time_utils import project_root
 
 logger = logging.getLogger("daily_review.report.renderer")
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-TEMPLATE_DIR = os.path.join(PROJECT_ROOT, "src", "report", "templates")
+PROJECT_ROOT = project_root()
+_BUNDLE_DIR = getattr(sys, '_MEIPASS', None)
+TEMPLATE_DIR = os.path.join(_BUNDLE_DIR, 'src', 'report', 'templates') if _BUNDLE_DIR else     os.path.join(PROJECT_ROOT, 'src', 'report', 'templates')
 REPORT_DIR = os.path.join(PROJECT_ROOT, "data", "reports")
 
 ECHARTS_CDN = "https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"
@@ -79,6 +83,9 @@ def render_report(analysis: dict) -> str:
         "futures": analysis.get("futures", []),
         "crypto": analysis.get("crypto", []),
         "asia_indices": analysis.get("asia_indices", []),
+        "etfs": analysis.get("etfs", []),
+        "etf_ok": not any(e.get("level") in ("高", "中", "低") for e in analysis.get("etfs", [])),
+        "etf_summary": etf_overview(analysis.get("etfs", [])),
         "market_sentiment": sentiment,
         "market_summary_html": md_lib.markdown(analysis.get("market_summary", ""), extensions=["tables"]),
         "manager_view_html": md_lib.markdown(analysis.get("manager_view", ""), extensions=["tables"]),
@@ -89,6 +96,7 @@ def render_report(analysis: dict) -> str:
             "indices": indices, "sectors": analysis.get("sectors", []),
             "stocks": stocks, "futures": analysis.get("futures", []),
             "crypto": analysis.get("crypto", []), "asia_indices": analysis.get("asia_indices", []),
+            "etfs": analysis.get("etfs", []),
             "market_sentiment": sentiment,
         }, ensure_ascii=False, default=str),
         "charts_js": build_charts_js({
@@ -96,6 +104,7 @@ def render_report(analysis: dict) -> str:
             "indices": indices, "sectors": analysis.get("sectors", []),
             "stocks": stocks, "futures": analysis.get("futures", []),
             "crypto": analysis.get("crypto", []), "asia_indices": analysis.get("asia_indices", []),
+            "etfs": analysis.get("etfs", []),
             "market_sentiment": sentiment,
         }),
     }

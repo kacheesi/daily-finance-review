@@ -6,7 +6,8 @@ logger = logging.getLogger("daily_review.ai.rule")
 
 
 def generate_market_summary(market: dict, indices: list, sectors: list, stocks: list,
-                            futures: list, crypto: list, asia_indices: list = None) -> str:
+                            futures: list, crypto: list, asia_indices: list = None,
+                            etfs: list = None) -> str:
     """市场总结 5 问（Markdown）"""
     score = market.get("market_score")
     state = market.get("market_state")
@@ -31,6 +32,11 @@ def generate_market_summary(market: dict, indices: list, sectors: list, stocks: 
     asia_txt = _asia_summary(asia_indices)
     if asia_txt:
         lines.append(f"- 亚太市场：{asia_txt}")
+
+    # 宽基 ETF 异动
+    etf_txt = _etf_summary(etfs)
+    if etf_txt:
+        lines.append(f"- 宽基ETF：{etf_txt}")
 
     lines.append("\n### 2. 哪些资金正在流入？")
     with_inflow = [i for i in indices if i.get("main_net_inflow") is not None and i["main_net_inflow"] > 0]
@@ -127,3 +133,18 @@ def _asia_summary(asia_indices: list) -> str:
         else:
             parts.append(f"{a.get('name','')} {'涨' if pct >= 0 else '跌'}{abs(pct):.2f}%")
     return "；".join(parts) + "（当日收盘）"
+
+
+def _etf_summary(etfs: list) -> str:
+    """宽基 ETF 异动一句话概括（无异常/有异常/数据缺失）"""
+    if not etfs:
+        return ""
+    abn = [e for e in etfs if e.get("level") in ("高", "中", "低")]
+    if not abn:
+        return "8只宽基ETF尾盘无异常"
+    high = [e for e in abn if e.get("level") == "高"]
+    mid = [e for e in abn if e.get("level") == "中"]
+    key = abn[:2]
+    parts = [f"{e['name']}{e['summary']}" for e in key]
+    level_txt = "、".join([f"{len(high)}只高" if high else "", f"{len(mid)}只中" if mid else ""]).strip("、")
+    return f"发现异动{len(abn)}只（{level_txt}）：{'；'.join(parts)}"
